@@ -1,3 +1,5 @@
+import requests
+
 def create_github_repo(*, org_name, token, repo_name, repo_description, is_private):
     headers = {
         'Accept': 'application/vnd.github+json',
