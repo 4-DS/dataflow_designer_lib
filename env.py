@@ -1,0 +1,1 @@
+SNR_STEP_TEMPLATE='https://github.com/4-DS/pipeline-step_template.git'
