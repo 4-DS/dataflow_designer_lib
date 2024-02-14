@@ -1,6 +1,6 @@
 import requests
 
-def create_github_repo(*, org_name, token, repo_name, repo_description, is_private):
+def create_github_repo(*, git_provider_api, git_provider_url, org_name, token, repo_name, repo_description, is_private):
     headers = {
         'Accept': 'application/vnd.github+json',
         'Authorization': 'Bearer ' + token,
@@ -8,13 +8,16 @@ def create_github_repo(*, org_name, token, repo_name, repo_description, is_priva
         'Content-Type': 'application/x-www-form-urlencoded',
     }
     
-    data = '{"name":"' + repo_name + '","description":"' + repo_description + '","homepage":"https://github.com","private":'+ 'true' if is_private else 'false' + ',"has_issues":true,"has_projects":true,"has_wiki":true}'
+    data = '{"name":"' + repo_name + '","description":"' + repo_description + '","homepage":"' + git_provider_url + '","private":'+ 'true' if is_private else 'false' + ',"has_issues":true,"has_projects":true,"has_wiki":true}'
 
-    response = requests.post('https://api.github.com/orgs/' + org_name + '/repos', headers=headers, data=data)
+    response = requests.post(git_provider_api + 'orgs/' + org_name + '/repos', headers=headers, data=data)
     
     return response
 
-def get_pipeline_steps(*, org_name, token, pipeline_name):
+def get_pipeline_steps(*, git_provider_api, git_provider_url, org_name, token, pipeline_name):
+    # For now 'git_provider_url' it's not used
+    # The idea is to get GitHub token automatically
+    
     headers = {
         'Accept': 'application/vnd.github+json',
         'Authorization': 'Bearer ' + token,
@@ -22,7 +25,7 @@ def get_pipeline_steps(*, org_name, token, pipeline_name):
     }
     
     response = requests.get(
-        'https://api.github.com/search/repositories?q=' + pipeline_name + '+in:name+org:' + org_name,
+        git_provider_api + 'search/repositories?q=' + pipeline_name + '+in:name+org:' + org_name,
         headers=headers,
     )
     
