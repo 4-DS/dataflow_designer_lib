@@ -22,6 +22,12 @@ import importlib
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+def set_git_creds_for_subprocess(git_username, git_password):
+    child_env = os.environ.copy()
+    child_env["GIT_USER"] = git_username
+    child_env["GIT_PASSWORD"] = git_password
+    return child_env
+
 class SinaraPipelineProvider():
 
     def __init__(self):
@@ -96,21 +102,17 @@ class SinaraPipelineProvider():
 
             run_result = None
             if git_public_user_sent:
-
+                child_env = set_git_creds_for_subprocess(GIT_STEP_TEMPLATE_USERNAME, GIT_STEP_TEMPLATE_PASSWORD)
                 run_result = run(f"rm -rf {step_repo_name} && \
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' clone --recursive {SNR_STEP_TEMPLATE} {step_repo_name} && \
                                    cd {step_repo_name} && \
                                    export current_branch=$(git rev-parse --abbrev-ref HEAD) && \
-                                   git checkout -b {git_default_branch} && \
-                                   git branch -d $current_branch && \
+                                   [[ $(git rev-parse --verify {git_default_branch} 2>/dev/null) ]] && echo 'Branch {git_default_branch} is already exists' || (git checkout -b {git_default_branch}; git branch -d $current_branch;) && \
                                    git config user.email {git_useremail} && \
                                    git config user.name {git_username}",
                                    universal_newlines=True,
                                    shell=True,
-                                   env={
-                                        "GIT_USER": GIT_STEP_TEMPLATE_USERNAME,
-                                        "GIT_PASSWORD": GIT_STEP_TEMPLATE_PASSWORD
-                                   },
+                                   env=child_env,
                                    stderr=STDOUT, 
                                    cwd=pipeline_folder, 
                                    executable="/bin/bash")
@@ -227,15 +229,13 @@ class SinaraPipelineProvider():
                     # create GitHub repo for a step
                     response = self.provider.create_github_repo(git_provider_api=GIT_PROVIDER_API, git_provider_url=GIT_PROVIDER_URL, org_name=git_provider_organization_username, token=git_provider_organization_password, repo_name=step_repo_name, repo_description='This is your ' + step_name + ' step in pipeline ' + pipeline_name, is_private=True)
               
+                child_env = set_git_creds_for_subprocess(git_provider_organization_username, git_provider_organization_password)
                 run_result = run(f"git checkout {git_default_branch} && \
                                    git remote set-url origin {step_repo_git} && \
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch}",
                                    universal_newlines=True,
                                    shell=True,
-                                   env={
-                                        "GIT_USER": git_provider_organization_username,
-                                        "GIT_PASSWORD": git_provider_organization_password
-                                   },
+                                   env=child_env,
                                    stderr=STDOUT, 
                                    cwd=step_folder,
                                    executable="/bin/bash")
@@ -419,6 +419,7 @@ class SinaraPipelineProvider():
                     step_repo_name = f"{pipeline_name}-{step_name}"
                     step_repo_git = f"{GIT_PROVIDER_URL}/{git_provider_organization_username}/{step_repo_name}.git"
                 
+                child_env = set_git_creds_for_subprocess(git_provider_organization_username, git_provider_organization_password)
                 run_result = run(f"git checkout {git_default_branch} && \
                                    git remote set-url origin {step_repo_git} && \
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule update --remote && \
@@ -427,10 +428,7 @@ class SinaraPipelineProvider():
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch}",
                                    universal_newlines=True,
                                    shell=True,
-                                   env={
-                                        "GIT_USER": git_provider_organization_username,
-                                        "GIT_PASSWORD": git_provider_organization_password
-                                   },
+                                   env=child_env,
                                    stderr=STDOUT, 
                                    cwd=step_folder,
                                    executable="/bin/bash")
