@@ -28,8 +28,8 @@ class Parse(HTMLParser):
 def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
 
     
-    GIT_PROVIDER_SIGN_IN_URL = f'{git_provider_url}users/sign_in'
-    GIT_PROVIDER_LOGIN_URL = f'{git_provider_url}users/sign_in'
+    GIT_PROVIDER_SIGN_IN_URL = f'{git_provider_url}/users/sign_in'
+    GIT_PROVIDER_LOGIN_URL = f'{git_provider_url}/users/sign_in'
     
     session = requests.Session()
 
@@ -56,7 +56,7 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
         print(f'Failed to log in to GitLab {GIT_PROVIDER_LOGIN_URL}')
         sys.exit(1)
 
-    page_tokens = session.get('/'.join((git_provider_url, '-/user_settings/personal_access_tokens')))
+    page_tokens = session.get('/'.join((git_provider_url, '/-/user_settings/personal_access_tokens')))
     private_token = None
     if page_tokens.ok:
         p = Parse()
@@ -69,7 +69,7 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
             'authenticity_token': token
         }
         
-    response = session.post('/'.join((git_provider_url, '-/user_settings/personal_access_tokens')), data=body)
+    response = session.post('/'.join((git_provider_url, '/-/user_settings/personal_access_tokens')), data=body)
         
     if response.ok:
         private_token = response.json()['new_token']

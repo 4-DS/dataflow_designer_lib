@@ -10,7 +10,7 @@ def create_github_repo(*, git_provider_api, git_provider_url, org_name, token, r
     
     data = '{"name":"' + repo_name + '","description":"' + repo_description + '","homepage":"' + git_provider_url + '","private":'+ 'true' if is_private else 'false' + ',"has_issues":true,"has_projects":true,"has_wiki":true}'
 
-    response = requests.post(git_provider_api + 'orgs/' + org_name + '/repos', headers=headers, data=data)
+    response = requests.post(git_provider_api + '/orgs/' + org_name + '/repos', headers=headers, data=data)
     
     return response
 
@@ -25,7 +25,7 @@ def get_pipeline_steps(*, git_provider_api, git_provider_url, org_name, token, p
     }
     
     response = requests.get(
-        git_provider_api + 'search/repositories?q=' + pipeline_name + '+in:name+org:' + org_name,
+        git_provider_api + '/search/repositories?q=' + pipeline_name + '+in:name+org:' + org_name,
         headers=headers,
     )
     
