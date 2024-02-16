@@ -1,5 +1,6 @@
 import requests
 import re
+import os
 
 from html.parser import HTMLParser
  
@@ -31,7 +32,8 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
     GIT_PROVIDER_LOGIN_URL = f'{git_provider_url}users/sign_in'
     
     session = requests.Session()
-    
+
+    print(os.environ)
     sign_in_page = str(session.get(GIT_PROVIDER_SIGN_IN_URL).content)
     for l in sign_in_page.split('\n'):
         m = re.search('name="authenticity_token" value="([^"]+)"', l)
