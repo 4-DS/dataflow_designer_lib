@@ -422,9 +422,10 @@ class SinaraPipelineProvider():
                 child_env = set_git_creds_for_subprocess(git_provider_organization_username, git_provider_organization_password)
                 run_result = run(f"git checkout {git_default_branch} && \
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule update --remote && \
-                                   git add sinara && \
+                                   [[ $(git status | grep 'nothing to commit') ]] && echo 'Nothing to commit for now' || \
+                                   (git add sinara && \
                                    git commit -m 'Updated Sinara lib' && \
-                                   git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch}",
+                                   git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch})",
                                    universal_newlines=True,
                                    shell=True,
                                    env=child_env,
