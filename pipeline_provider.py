@@ -336,8 +336,8 @@ class SinaraPipelineProvider():
         get_tmp_prepared()
         
         tsrc_manifest_repo_path = str(Path(f"tmp/{pipeline_name}-manifest").resolve())
-        
-        run_result = run(f'rm -rf {pipeline_folder}/.tsrc && \
+        pipeline_folder_abs_path = str(Path(f"{pipeline_folder}").resolve())
+        run_result = run(f'rm -rf {pipeline_folder_abs_path}/.tsrc && \
                    rm -rf {tsrc_manifest_repo_path}.git && \
                    rm -rf {tsrc_manifest_repo_path} && \
                    git init --bare {tsrc_manifest_repo_path}.git && \
@@ -349,7 +349,7 @@ class SinaraPipelineProvider():
                    git add -A &&  \
                    git commit -m "Updated tsrc manifest" && \
                    git push && \
-                   cd {pipeline_folder} && \
+                   cd {pipeline_folder_abs_path} && \
                    tsrc init {tsrc_manifest_repo_path}.git',
                  shell=True, stderr=STDOUT, cwd=None)
         
