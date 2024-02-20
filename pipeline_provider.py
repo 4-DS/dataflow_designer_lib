@@ -294,7 +294,7 @@ class SinaraPipelineProvider():
         #if save_git_creds == "y":
         # TODO
         # Save creds store to another location and clean after procedure
-        
+        git_default_branch = input("Please, enter your Git default branch: ")
         print("WARNING: Git credentials are stored only plain text. It's a normal behaviour.")
         run_result = run(f"git config --global credential.helper store && \
                                (echo url={GIT_PROVIDER_URL}; echo username={git_provider_organization_username}; echo password={git_provider_organization_password}; echo ) | git credential approve",
@@ -414,14 +414,13 @@ class SinaraPipelineProvider():
             if step_name:
                 if git_provider == 'GitLab':
                     step_repo_name = f"{step_name}"
-                    step_repo_git = f"{GIT_PROVIDER_URL}/{products_root_name}/{product_name}/{pipeline_name}/{step_repo_name}.git"
+                    #step_repo_git = f"{GIT_PROVIDER_URL}/{products_root_name}/{product_name}/{pipeline_name}/{step_repo_name}.git"
                 elif git_provider == 'GitHub':
                     step_repo_name = f"{pipeline_name}-{step_name}"
-                    step_repo_git = f"{GIT_PROVIDER_URL}/{git_provider_organization_username}/{step_repo_name}.git"
+                    #step_repo_git = f"{GIT_PROVIDER_URL}/{git_provider_organization_username}/{step_repo_name}.git"
                 
                 child_env = set_git_creds_for_subprocess(git_provider_organization_username, git_provider_organization_password)
                 run_result = run(f"git checkout {git_default_branch} && \
-                                   git remote set-url origin {step_repo_git} && \
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule update --remote && \
                                    git add sinara && \
                                    git commit -m 'Updated Sinara lib' && \

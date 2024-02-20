@@ -26,14 +26,11 @@ class Parse(HTMLParser):
 
 
 def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
-
-    
     GIT_PROVIDER_SIGN_IN_URL = f'{git_provider_url}/users/sign_in'
     GIT_PROVIDER_LOGIN_URL = f'{git_provider_url}/users/sign_in'
     
     session = requests.Session()
 
-    print(os.environ)
     sign_in_page = str(session.get(GIT_PROVIDER_SIGN_IN_URL).content)
     for l in sign_in_page.split('\n'):
         m = re.search('name="authenticity_token" value="([^"]+)"', l)
@@ -80,10 +77,16 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
     return session
 
 def get_gitlab_group_id(git_provider_api, gitlab_session, group_name, parent_group_id=None):
-    r = gitlab_session.get(f'{git_provider_api}/groups')
-    for group in r.json():
-        if group["name"] == group_name and (group["parent_id"] == parent_group_id if parent_group_id else not group["parent_id"]):
-            return group["id"]
+
+    api_next_page = '1'
+
+    while api_next_page:
+        r = gitlab_session.get(f"{git_provider_api}/groups?page={int(api_next_page)}")
+
+        for group in r.json():
+            if group["name"] == group_name and (group["parent_id"] == int(parent_group_id) if parent_group_id else not group["parent_id"]):
+                return group["id"]
+        api_next_page = r.headers["X-Next-Page"]
     return None
 
 def create_gitlab_group(git_provider_api, gitlab_session, group_name, parent_group_id):
@@ -99,6 +102,8 @@ def create_gitlab_group(git_provider_api, gitlab_session, group_name, parent_gro
         data = '{"path": "'+ group_name + '", "name": "'+ group_name +'", "parent_id": '+ str(parent_group_id) +' }'
     
         response = gitlab_session.post(f'{git_provider_api}/groups/', headers=headers, data=data)
+
+        response.raise_for_status()
         
         group_id = response.json()["id"]
     
