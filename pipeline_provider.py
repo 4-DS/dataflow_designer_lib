@@ -122,8 +122,7 @@ class SinaraPipelineProvider():
                                git clone --recurse-submodules {SNR_STEP_TEMPLATE} {step_repo_name} && \
                                cd {step_repo_name} && \
                                export current_branch=$(git rev-parse --abbrev-ref HEAD) && \
-                               git checkout -b {git_default_branch} && \
-                               git branch -d $current_branch && \
+                               [[ $(git rev-parse --verify {git_default_branch} 2>/dev/null) ]] && echo "Branch {git_default_branch} is already exists" || (git checkout -b {git_default_branch}; git branch -d $current_branch;) && \
                                git config user.email {git_useremail} && \
                                git config user.name {git_username}', 
                              shell=True, stderr=STDOUT, cwd=pipeline_folder, executable="/bin/bash")
