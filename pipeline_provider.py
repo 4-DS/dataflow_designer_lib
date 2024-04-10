@@ -220,13 +220,25 @@ class SinaraPipelineProvider():
                     step_repo_git = f"{GIT_PROVIDER_URL}/{products_root_name}/{product_name}/{pipeline_name}/{step_repo_name}.git"
                     # create GitLab repo for a step
 
-                    response = self.provider.create_gitlab_repo(git_provider_api=GIT_PROVIDER_API, gitlab_session=gitlab_session, repo_group_id=pipeline_name_id, repo_name=step_repo_name, repo_description='This is your ' + step_name + ' step in pipeline ' + pipeline_name, is_private=True)
+                    response = self.provider.create_gitlab_repo(git_provider_api=GIT_PROVIDER_API,
+                                                                gitlab_session=gitlab_session,
+                                                                repo_group_id=pipeline_name_id,
+                                                                repo_name=step_repo_name,
+                                                                repo_description='This is your ' + step_name + ' step in pipeline ' + pipeline_name,
+                                                                is_private=True)
               
                 elif git_provider == 'GitHub':
                     step_repo_name = f"{pipeline_name}-{step_name}"
                     step_repo_git = f"{GIT_PROVIDER_URL}/{git_provider_organization_username}/{step_repo_name}.git"
+                    
                     # create GitHub repo for a step
-                    response = self.provider.create_github_repo(git_provider_api=GIT_PROVIDER_API, git_provider_url=GIT_PROVIDER_URL, org_name=git_provider_organization_username, token=git_provider_organization_password, repo_name=step_repo_name, repo_description='This is your ' + step_name + ' step in pipeline ' + pipeline_name, is_private=True)
+                    response = self.provider.create_github_repo(git_provider_api=GIT_PROVIDER_API,
+                                                                git_provider_url=GIT_PROVIDER_URL,
+                                                                org_name=git_provider_organization_username,
+                                                                token=git_provider_organization_password,
+                                                                repo_name=step_repo_name,
+                                                                repo_description='This is your ' + step_name + ' step in pipeline ' + pipeline_name, \
+                                                                is_private=True)
               
                 child_env = set_git_creds_for_subprocess(git_provider_organization_username, git_provider_organization_password)
                 run_result = run(f"git checkout {git_default_branch} && \
