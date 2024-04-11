@@ -209,7 +209,7 @@ class SinaraPipelineProvider():
         for step_folder in step_folders:
             print(step_folder)
         yes = input("Continue? (Y/n):")
-        if yes and not yes.lower().startswith('y')
+        if yes and not yes.lower().startswith('y'):
             return
         
         for step_folder in step_folders:
@@ -378,7 +378,7 @@ class SinaraPipelineProvider():
         arg_parser = ArgumentParser()
         
         #arg_parser.add_argument("--git_provider_step_template_url", help="git provider base url where step template resides")    
-        arg_parser.add_argument("--git_provider_organization_api", help="git provider api url in organization ")    
+        arg_parser.add_argument("--git_provider_organization_api", help="git provider api url in organization ")
         arg_parser.add_argument("--git_provider_organization_url", help="git provider base url in organization")
 
         #arg_parser.add_argument("--git_step_template_url", help="step template url")
