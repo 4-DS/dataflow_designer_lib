@@ -204,7 +204,14 @@ class SinaraPipelineProvider():
             print(product_name_id)
             pipeline_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, pipeline_name, product_name_id)
             print(pipeline_name_id)
-            
+
+        print(f'You are about co push following steps to to the {GIT_PROVIDER_URL} repo:')
+        for step_folder in step_folders:
+            print(step_folder)
+        yes = input("Continue? (Y/n):")
+        if yes and not yes.lower().startswith('y')
+            return
+        
         for step_folder in step_folders:
             step_name = None
             step_repo_git = None
