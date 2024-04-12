@@ -383,13 +383,13 @@ class SinaraPipelineProvider():
 
         #arg_parser.add_argument("--git_step_template_url", help="step template url")
         #arg_parser.add_argument("--step_template_nb_substep", help="the main notebook in step template")
-        arg_parser.add_argument("--current_dir", help="current directory")      
+        arg_parser.add_argument("--current_dir", help="current directory")
         #arg_parser.add_argument("--git_step_template_username", help="login to clone step template")
         #arg_parser.add_argument("--git_step_template_password", help="password to clone step template")
         
         args = arg_parser.parse_args()
         
-        CURRENT_DIR = args.current_dir   
+        CURRENT_DIR = args.current_dir
         GIT_PROVIDER_URL = args.git_provider_organization_url
         GIT_PROVIDER_API = args.git_provider_organization_api
 
@@ -444,6 +444,81 @@ class SinaraPipelineProvider():
                                    (git add sinara && \
                                    git commit -m 'Updated Sinara lib' && \
                                    git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch})",
+                                   universal_newlines=True,
+                                   shell=True,
+                                   env=child_env,
+                                   stderr=STDOUT, 
+                                   cwd=step_folder,
+                                   executable="/bin/bash")
+                
+                #run_result = run (f'git remote set-url origin {step_repo_git} && \
+                #                    git push -f',
+                #                   shell=True, stderr=STDOUT, cwd=step_folder, executable="/bin/bash")
+                if run_result.returncode !=0 :
+                    raise Exception(f'Could not push a repository for SinaraML step with the name {step_repo_name}!')
+
+    def update_origin_for_pipeline(self):
+        arg_parser = ArgumentParser()
+        
+        arg_parser.add_argument("--git_provider_organization_api", help="git provider api url in organization ")
+        arg_parser.add_argument("--git_provider_organization_url", help="git provider base url in organization")
+        arg_parser.add_argument("--current_dir", help="current directory")
+        arg_parser.add_argument("--new_origin_url", help="new git origin url")
+        
+        args = arg_parser.parse_args()
+        
+        CURRENT_DIR = args.current_dir
+        GIT_PROVIDER_URL = args.git_provider_organization_url
+        GIT_PROVIDER_API = args.git_provider_organization_api
+        NEW_ORIGIN_URL = args.new_origin_url
+
+        git_provider = self.git_provider
+        #git_provider = input("Please, enter your Git provider among GitHub/GitLab (default=GitLab): ") or 'GitLab'
+
+        product_name = ''
+        if git_provider == 'GitLab':
+            git_provider_organization_username = input(f"Please, enter your username for managing {git_provider} repositories: ")
+            git_provider_organization_password = getpass(f"Please, enter your password for managing {git_provider} repositories: ")
+        
+            #products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
+            product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
+        elif git_provider == 'GitHub':
+            git_provider_organization_username = input(f"Please, enter your {git_provider} organization: ")
+            git_provider_organization_password = getpass(f"Please, enter your token for managing {git_provider} repositories: ")
+
+        
+        pipeline_name = input("Please, enter your Pipeline name: ") or 'fabric_test_pipeline'
+
+        steps_folder_glob = None
+        if git_provider == 'GitLab':
+            steps_folder_glob = input(f"Please, enter a glob to load '{pipeline_name}' like /some_path/steps_folder/*. (default=./product_name/pipeline_name/*): ") or f"{Path(CURRENT_DIR).resolve()}/{product_name}/{pipeline_name}/*"
+        elif git_provider == 'GitHub':
+            steps_folder_glob = input(f"Please, enter a glob to load '{pipeline_name}' like /some_path/steps_folder/*. (default=./pipeline_name-*): ") or f"{Path(CURRENT_DIR).resolve()}/{pipeline_name}-*"
+
+        git_default_branch = input("Please, enter your Git default branch: ")
+    
+        step_folders = get_step_folders(steps_folder_glob)
+            
+        for step_folder in step_folders:
+            step_name = None
+            step_repo_git = None
+            if git_provider == 'GitLab':
+                step_name = Path(step_folder).name
+            elif git_provider == 'GitHub':
+                step_folder_split = Path(step_folder).name.split("-")
+                step_name = '-'.join(step_folder_split[1::]) if len(step_folder_split) > 1 else None
+    
+            if step_name:
+                if git_provider == 'GitLab':
+                    step_repo_name = f"{step_name}"
+                    #step_repo_git = f"{GIT_PROVIDER_URL}/{products_root_name}/{product_name}/{pipeline_name}/{step_repo_name}.git"
+                elif git_provider == 'GitHub':
+                    step_repo_name = f"{pipeline_name}-{step_name}"
+                    #step_repo_git = f"{GIT_PROVIDER_URL}/{git_provider_organization_username}/{step_repo_name}.git"
+                
+                child_env = set_git_creds_for_subprocess(git_provider_organization_username, git_provider_organization_password)
+                run_result = run(f"git checkout {git_default_branch} && \
+                                   git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {NEW_ORIGIN_URL}/{step_name}",
                                    universal_newlines=True,
                                    shell=True,
                                    env=child_env,
