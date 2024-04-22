@@ -1,6 +1,7 @@
 import requests
 import re
 import os
+import sys
 
 from html.parser import HTMLParser
  
@@ -76,13 +77,35 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
     session.headers.update({'Private-Token': private_token})
     return session
 
+def get_gitlab_group_projects(git_provider_api, gitlab_session, groupFullPath):
+    #gitlab_url=<your gitlab host>
+    #access_token=<your access token>
+    #group_name=<your group>
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    data = """{
+        "query": "{ group(fullPath: \\"{groupFullPath}\\") { projects {nodes { name description httpUrlToRepo nameWithNamespace starCount}}}}" \
+            
+    }""".replace('{groupFullPath}', groupFullPath)
+    print(data)
+    response = gitlab_session.post(f'{git_provider_api}/graphql', headers=headers, data=data)
+    if response.status_code != 200:
+        print(response.content)
+        sys.exit(1)
+
+    projects_list = response.json()['data']['group']['projects']['nodes']
+    step_list = [{"step_repo_name": project["name"], "step_repo_git": project["httpUrlToRepo"]} for project in projects_list]
+    return step_list
+
 def get_gitlab_group_id(git_provider_api, gitlab_session, group_name, parent_group_id=None):
 
     api_next_page = '1'
 
     while api_next_page:
         r = gitlab_session.get(f"{git_provider_api}/groups?page={int(api_next_page)}")
-
+        #print(r.content)
+        #exit(0)
         for group in r.json():
             if group["name"] == group_name and (group["parent_id"] == int(parent_group_id) if parent_group_id else not group["parent_id"]):
                 return group["id"]

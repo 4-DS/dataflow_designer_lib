@@ -292,12 +292,14 @@ class SinaraPipelineProvider():
         if git_provider == 'GitLab':
             git_provider_organization_username = input(f"Please, enter your username for managing {git_provider} repositories: ")
             git_provider_organization_password = getpass(f"Please, enter your password for managing {git_provider} repositories: ")
-        
-            products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
-            product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
-            pipeline_name = input("Please, enter your Pipeline name: ") or 'fabric_test_pipeline'
-
-            pipeline_folder = input(f"Please, enter an existing folder to save '{pipeline_name}' (default=product_name/pipeline_name): ") or str(Path(CURRENT_DIR).resolve())+ '/'+ product_name + '/' + pipeline_name
+            
+            # products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
+            # product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
+            # pipeline_name = input("Please, enter your Pipeline name: ") or 'fabric_test_pipeline'
+            pipeline_group_path = input("Please enter pipeline fill path: ")
+            pipeline_name = pipeline_group_path.split('/')[-1]
+            
+            pipeline_folder = Path(CURRENT_DIR).resolve() / pipeline_name
             os.makedirs(pipeline_folder, exist_ok=True)
 
         elif git_provider == 'GitHub':
@@ -325,13 +327,14 @@ class SinaraPipelineProvider():
         step_list = []
         if git_provider == 'GitLab':
             gitlab_session = self.provider.get_gitlab_session(GIT_PROVIDER_URL, git_provider_organization_username, git_provider_organization_password)
-            products_root_name_id = self.provider.get_gitlab_group_id(GIT_PROVIDER_API, gitlab_session, products_root_name)
-            print(products_root_name_id)
-            product_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, product_name, products_root_name_id)
-            print(product_name_id)
-            pipeline_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, pipeline_name, product_name_id)
-            print(pipeline_name_id)
-            step_list = self.provider.get_pipeline_steps(git_provider_api=GIT_PROVIDER_API, gitlab_session=gitlab_session, group_id=pipeline_name_id)
+            step_list = self.provider.get_gitlab_group_projects(GIT_PROVIDER_API, gitlab_session, pipeline_group_path)
+            # products_root_name_id = self.provider.get_gitlab_group_id(GIT_PROVIDER_API, gitlab_session, products_root_name)
+            # print(products_root_name_id)
+            # product_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, product_name, products_root_name_id)
+            # print(product_name_id)
+            # pipeline_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, pipeline_name, product_name_id)
+            # print(pipeline_name_id)
+            # step_list = self.provider.get_pipeline_steps(git_provider_api=GIT_PROVIDER_API, gitlab_session=gitlab_session, group_id=pipeline_name_id)
         elif git_provider == 'GitHub':
             step_list = self.provider.get_pipeline_steps(git_provider_api=GIT_PROVIDER_API, git_provider_url=GIT_PROVIDER_URL, org_name=git_provider_organization_username, token=git_provider_organization_password, pipeline_name=pipeline_name)
         
