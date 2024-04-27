@@ -154,7 +154,7 @@ class SinaraPipelineProvider():
         
         args = arg_parser.parse_args()
         
-        CURRENT_DIR = args.current_dir   
+        CURRENT_DIR = args.current_dir
         GIT_PROVIDER_URL = args.git_provider_organization_url
         GIT_PROVIDER_API = args.git_provider_organization_api
 
@@ -166,18 +166,21 @@ class SinaraPipelineProvider():
             git_provider_organization_username = input(f"Please, enter your username for managing {git_provider} repositories: ")
             git_provider_organization_password = getpass(f"Please, enter your password for managing {git_provider} repositories: ")
         
-            products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
-            product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
+            # products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
+            # product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
+            pipeline_group_path = input("Please enter pipeline full path: ")
+            pipeline_name = pipeline_group_path.split('/')[-1]
+            
         elif git_provider == 'GitHub':
             git_provider_organization_username = input(f"Please, enter your {git_provider} organization: ")
             git_provider_organization_password = getpass(f"Please, enter your token for managing {git_provider} repositories: ")
 
         
-        pipeline_name = input("Please, enter your Pipeline name: ") or 'fabric_test_pipeline'
+        #pipeline_name = input("Please, enter your Pipeline name: ") or 'fabric_test_pipeline'
 
         steps_folder_glob = None
         if git_provider == 'GitLab':
-            steps_folder_glob = input(f"Please, enter a glob to load '{pipeline_name}' like /some_path/steps_folder/*. (default=./product_name/pipeline_name/*): ") or f"{Path(CURRENT_DIR).resolve()}/{product_name}/{pipeline_name}/*"
+            steps_folder_glob = input(f"Please, enter a glob to load '{pipeline_name}' like /some_path/steps_folder/*. (default=./product_name/pipeline_name/*): ") or f"{Path(CURRENT_DIR).resolve()}/{pipeline_name}/*"
         elif git_provider == 'GitHub':
             steps_folder_glob = input(f"Please, enter a glob to load '{pipeline_name}' like /some_path/steps_folder/*. (default=./pipeline_name-*): ") or f"{Path(CURRENT_DIR).resolve()}/{pipeline_name}-*"
 
@@ -296,7 +299,7 @@ class SinaraPipelineProvider():
             # products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
             # product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
             # pipeline_name = input("Please, enter your Pipeline name: ") or 'fabric_test_pipeline'
-            pipeline_group_path = input("Please enter pipeline fill path: ")
+            pipeline_group_path = input("Please enter pipeline full path: ")
             pipeline_name = pipeline_group_path.split('/')[-1]
             
             pipeline_folder = Path(CURRENT_DIR).resolve() / pipeline_name
