@@ -77,6 +77,27 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
     session.headers.update({'Private-Token': private_token})
     return session
 
+def get_gitlab_group_id2(git_provider_api, gitlab_session, groupFullPath):
+    #{ group(fullPath: "dsml_components/test_product") {id} }
+
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    data = """{
+        "query": "{ group(fullPath: \\"{groupFullPath}\\") {id} }" \
+            
+    }""".replace('{groupFullPath}', groupFullPath)
+    print(data)
+    response = gitlab_session.post(f'{git_provider_api}/graphql', headers=headers, data=data)
+    if response.status_code != 200:
+        print(response.content)
+        sys.exit(1)
+
+    #print(response.json())
+    #exit(0)
+    group_id = response.json()['data']['group']['id']
+    return group_id.split('/')[-1]
+
 def get_gitlab_group_projects(git_provider_api, gitlab_session, groupFullPath):
     #gitlab_url=<your gitlab host>
     #access_token=<your access token>
@@ -103,7 +124,7 @@ def get_gitlab_group_id(git_provider_api, gitlab_session, group_name, parent_gro
     api_next_page = '1'
 
     while api_next_page:
-        r = gitlab_session.get(f"{git_provider_api}/groups?page={int(api_next_page)}")
+        r = gitlab_session.get(f"{git_provider_api}/v4/groups?page={int(api_next_page)}")
         #print(r.content)
         #exit(0)
         for group in r.json():
@@ -124,7 +145,7 @@ def create_gitlab_group(git_provider_api, gitlab_session, group_name, parent_gro
         
         data = '{"path": "'+ group_name + '", "name": "'+ group_name +'", "parent_id": '+ str(parent_group_id) +' }'
     
-        response = gitlab_session.post(f'{git_provider_api}/groups/', headers=headers, data=data)
+        response = gitlab_session.post(f'{git_provider_api}/v4/groups/', headers=headers, data=data)
 
         response.raise_for_status()
         
@@ -149,7 +170,7 @@ def create_gitlab_repo(*, git_provider_api, gitlab_session, repo_group_id, repo_
 
 def get_pipeline_steps(*, git_provider_api, gitlab_session, group_id):
     
-    response = gitlab_session.get(f'{git_provider_api}/groups/{group_id}/projects')
+    response = gitlab_session.get(f'{git_provider_api}/v4/groups/{group_id}/projects')
     
     response.raise_for_status()
 
@@ -160,7 +181,7 @@ def get_pipeline_steps(*, git_provider_api, gitlab_session, group_id):
     
 def check_gitlab_project_exists(git_provider_api, gitlab_session, group_id, project_name):
     
-    response = gitlab_session.get(f'{git_provider_api}/groups/{group_id}/projects')
+    response = gitlab_session.get(f'{git_provider_api}/v4/groups/{group_id}/projects')
     
     response.raise_for_status()
 

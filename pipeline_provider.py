@@ -169,6 +169,7 @@ class SinaraPipelineProvider():
             # products_root_name = input("Please, enter your Root group for products in your organization (default=dsml_components): ") or 'dsml_components'
             # product_name = input("Please, enter your Product name: ") or 'fabric_test_product'
             pipeline_group_path = input("Please enter pipeline full path: ")
+            products_root_name = pipeline_group_path.split('/')[0]
             pipeline_name = pipeline_group_path.split('/')[-1]
             
         elif git_provider == 'GitHub':
@@ -203,10 +204,11 @@ class SinaraPipelineProvider():
             gitlab_session = self.provider.get_gitlab_session(GIT_PROVIDER_URL, git_provider_organization_username, git_provider_organization_password)
             products_root_name_id = self.provider.get_gitlab_group_id(GIT_PROVIDER_API, gitlab_session, products_root_name)
             print(products_root_name_id)
-            product_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, product_name, products_root_name_id)
-            print(product_name_id)
-            pipeline_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, pipeline_name, product_name_id)
-            print(pipeline_name_id)
+            #product_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, product_name, products_root_name_id)
+            #print(product_name_id)
+            #pipeline_name_id = self.provider.create_gitlab_group(GIT_PROVIDER_API, gitlab_session, pipeline_name, product_name_id)
+            pipeline_name_id = self.provider.get_gitlab_group_id2(GIT_PROVIDER_API, gitlab_session, pipeline_group_path)
+            #print(pipeline_name_id)
 
         print(f'You are about co push following steps to to the {GIT_PROVIDER_URL} repo:')
         for step_folder in step_folders:
