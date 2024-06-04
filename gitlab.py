@@ -68,8 +68,9 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
         }
         
     response = session.post('/'.join((git_provider_url, '/-/user_settings/personal_access_tokens')), data=body)
-        
-    if response.ok:
+    print(response.headers['Content-type'])
+   
+    if response.ok and 'application/json' in response.headers['Content-type']:
         private_token = response.json()['new_token']
         
     if not private_token:
@@ -83,10 +84,7 @@ def get_gitlab_group_id2(git_provider_api, gitlab_session, groupFullPath):
     headers = {
         'Content-Type': 'application/json',
     }
-    data = """{
-        "query": "{ group(fullPath: \\"{groupFullPath}\\") {id} }" \
-            
-    }""".replace('{groupFullPath}', groupFullPath)
+    data = """{ "query": "{ group(fullPath: \\"{groupFullPath}\\") {id} }" }""".replace('{groupFullPath}', groupFullPath)
     print(data)
     response = gitlab_session.post(f'{git_provider_api}/graphql', headers=headers, data=data)
     if response.status_code != 200:

@@ -23,7 +23,8 @@ def get_pipeline_steps(*, git_provider_api, git_provider_url, org_name, token, p
         'Authorization': 'Bearer ' + token,
         'X-GitHub-Api-Version': '2022-11-28',
     }
-    
+
+    print(org_name)
     response = requests.get(
         git_provider_api + '/search/repositories?q=' + pipeline_name + '+in:name+org:' + org_name,
         headers=headers,
