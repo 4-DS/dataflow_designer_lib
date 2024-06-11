@@ -317,29 +317,34 @@ class SinaraPipelineProvider():
                       git_provider_type, git_provider_url, git_provider_api,
                       git_default_branch = 'main',
                       git_username = None, git_password = None):
-          
-        git_provider = self.get_git_provider(git_provider_type)
 
-        product_name = ''
-        pipeline_name = ''
-        pipeline_folder = ''
-        if git_provider_type == 'GitLab':
-            pipeline_name = pipeline_git_url.split('/')[-1]
-            
-            pipeline_folder = Path(pipeline_dir).resolve() # / pipeline_name
-            os.makedirs(pipeline_folder, exist_ok=True)
+        do_clone = True
+        if pipeline_git_url is None or pipeline_git_url == 'None': # get pipeline git url from first pipeline step
+            do_clone = False
+            for step_repo_name in get_step_folders(f'{pipeline_dir}/*'):
+                import subprocess
+                result = subprocess.run(f'cd {step_repo_name} && git config --get remote.origin.url', shell=True, stdout=subprocess.PIPE)
+                step_git_url = result.stdout.decode('utf-8').replace('\n', '')
+                break
+            if pipeline_git_url is None:
+                raise Exception(f'Could not pull SinaraML pipeline: git repository not found!')
 
-        elif git_provider_type == 'GitHub':
-            pipeline_folder = pipeline_dir
-
-        #save_git_creds = input(f"Would you like to store Git credentials once? WARNING: Currenly, only plain text is supported. y/n (default=y): ") or "y"
+            parsed = urlparse(step_git_url)
+            lst = parsed.path.split('/')
+            git_folder = '/'.join(lst[:len(lst)-1]) # remove step name from path
+            if git_provider_type == 'GitLab':
+                pass
+            elif git_provider_type == 'GitHub':
+                git_folder = git_folder + '/' + lst[-1].split['-'][0] # add pipeline name
+            url_parts = [parsed.scheme, parsed.netloc, git_folder, '', '', '']
+            pipeline_git_url = urlunparse(url_parts)
         
-        #if save_git_creds == "y":
-        # TODO
-        # Save creds store to another location and clean after procedure
-        #git_default_branch = input("Please, enter your Git default branch: ")
-        self.cache_git_creds(git_provider_url, git_username, git_password)
-
+        #print(pipeline_git_url)
+        #exit(0)
+        
+        git_provider = self.get_git_provider(git_provider_type)
+        pipeline_name = ''
+        
         gitlab_session = None
         step_list = []
         if git_provider_type == 'GitLab':
@@ -349,61 +354,83 @@ class SinaraPipelineProvider():
             pipeline_name = urlparse(pipeline_git_url).path.split('/')[-1]
 
         elif git_provider_type == 'GitHub':
-            if not pipeline_git_url: # get pipeline git url from first pipeline step
-                for step_repo_name in get_step_folders(f'{pipeline_folder}/*'):
-                    import subprocess
-                    result = subprocess.run(f'cd {step_repo_name} && git config --get remote.origin.url', shell=True, stdout=subprocess.PIPE)
-                    pipeline_git_url = result.stdout.decode('utf-8').replace('\n', '')
-                    break
+
             git_org_name = urlparse(pipeline_git_url).path.split('/')[1]
             print(git_org_name)
-            pipeline_name = Path(pipeline_folder).name
+            pipeline_name = urlparse(pipeline_git_url).path.split('/')[-1].split['-'][0]
             print(pipeline_name)
-            exit(0)
             step_list = git_provider.get_pipeline_steps(git_provider_api=git_provider_api, git_provider_url=git_provider_url,
                                                          org_name=git_org_name,
                                                          token=git_password, pipeline_name=pipeline_name)
-        
-        tsrc_manifest = {"repos": []}
 
-        print(step_list)
+        if do_clone:
+            pipeline_dir = str(Path(pipeline_dir) / pipeline_name)
+            import errno
+            try:
+                os.makedirs(pipeline_dir)
+            except OSError as e:
+                if e.errno == errno.EEXIST:
+                    raise Exception(f'Could not pull SinaraML pipeline {pipeline_name}: folder already exists!')
+                else:
+                    raise  # raises the error again
+        
+        #print(pipeline_name)
+        #print(step_list)
         for step in step_list:
             step_repo_name = step["step_repo_name"]
             step_repo_git = step["step_repo_git"]
+            if do_clone:
+                # clone
+                git_command = f"clone {step_repo_git}"
+                cwd = pipeline_dir
+            else: 
+                #pull
+                git_command = f"pull"
+                step_dir = Path(pipeline_dir) / step_repo_name
+                cwd = step_dir
+
+            child_env = set_git_creds_for_subprocess(git_username, git_password)
+            run_result = run(f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' {git_command}",
+                           universal_newlines=True,
+                           shell=True,
+                           env=child_env,
+                           stderr=STDOUT, 
+                           cwd=cwd,
+                           executable="/bin/bash")
             
-            tsrc_manifest_repo = {
-                #"dest": step_repo_name,
-                "src": step_repo_name,
-                "url": step_repo_git,
-                "branch": git_default_branch
-            }
-            tsrc_manifest["repos"].append(tsrc_manifest_repo)
+        #     tsrc_manifest_repo = {
+        #         #"dest": step_repo_name,
+        #         "src": step_repo_name,
+        #         "url": step_repo_git,
+        #         "branch": git_default_branch
+        #     }
+        #     tsrc_manifest["repos"].append(tsrc_manifest_repo)
             
-        with open('manifest.yml', 'w') as f:
-            yaml.dump(tsrc_manifest, f, default_flow_style=False)
+        # with open('manifest.yml', 'w') as f:
+        #     yaml.dump(tsrc_manifest, f, default_flow_style=False)
         
-        get_tmp_prepared()
+        # get_tmp_prepared()
         
-        tsrc_manifest_repo_path = str(Path(f"tmp/{pipeline_name}-manifest").resolve())
-        pipeline_folder_abs_path = str(Path(f"{pipeline_folder}").resolve())
-        run_result = run(f'rm -rf {pipeline_folder_abs_path}/.tsrc && \
-                   rm -rf {tsrc_manifest_repo_path}.git && \
-                   rm -rf {tsrc_manifest_repo_path} && \
-                   git init --bare {tsrc_manifest_repo_path}.git && \
-                   git clone {tsrc_manifest_repo_path}.git {tsrc_manifest_repo_path} && \
-                   cp manifest.yml {tsrc_manifest_repo_path} && \
-                   cd {tsrc_manifest_repo_path} && \
-                   git config user.email jovyan@test.ru && \
-                   git config user.name jovyan && \
-                   git add -A &&  \
-                   git commit -m "Updated tsrc manifest" && \
-                   git push && \
-                   cd {pipeline_folder_abs_path} && \
-                   tsrc init {tsrc_manifest_repo_path}.git',
-                 shell=True, stderr=STDOUT, cwd=None)
+        # tsrc_manifest_repo_path = str(Path(f"tmp/{pipeline_name}-manifest").resolve())
+        # pipeline_folder_abs_path = str(Path(f"{pipeline_folder}").resolve())
+        # run_result = run(f'rm -rf {pipeline_folder_abs_path}/.tsrc && \
+        #            rm -rf {tsrc_manifest_repo_path}.git && \
+        #            rm -rf {tsrc_manifest_repo_path} && \
+        #            git init --bare {tsrc_manifest_repo_path}.git && \
+        #            git clone {tsrc_manifest_repo_path}.git {tsrc_manifest_repo_path} && \
+        #            cp manifest.yml {tsrc_manifest_repo_path} && \
+        #            cd {tsrc_manifest_repo_path} && \
+        #            git config user.email jovyan@test.ru && \
+        #            git config user.name jovyan && \
+        #            git add -A &&  \
+        #            git commit -m "Updated tsrc manifest" && \
+        #            git push && \
+        #            cd {pipeline_folder_abs_path} && \
+        #            tsrc init {tsrc_manifest_repo_path}.git',
+        #          shell=True, stderr=STDOUT, cwd=None)
         
-        if run_result.returncode !=0 :
-            raise Exception(f'Could not pull SinaraML pipeline with the name {pipeline_name}!')
+        # if run_result.returncode !=0 :
+        #     raise Exception(f'Could not pull SinaraML pipeline with the name {pipeline_name}!')
 
     def update_sinaralib_for_pipeline(self):
         arg_parser = ArgumentParser()
