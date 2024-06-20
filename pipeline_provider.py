@@ -234,6 +234,28 @@ class SinaraPipelineProvider():
 
         git_provider = self.get_git_provider(git_provider_type)
         gitlab_session = None
+
+        if pipeline_git_url is None or pipeline_git_url == 'None': # get pipeline git url from first pipeline step
+            pipeline_git_url = None
+            for step_repo_name in get_step_folders(f'{pipeline_dir}/*'):
+                import subprocess
+                result = subprocess.run(f'cd {step_repo_name} && git config --get remote.origin.url', shell=True, stdout=subprocess.PIPE)
+                step_git_url = result.stdout.decode('utf-8').replace('\n', '')
+                pipeline_git_url = step_git_url
+                break
+            if pipeline_git_url is None:
+                raise Exception(f'Could not pull SinaraML pipeline: git repository not found!')
+
+            parsed = urlparse(step_git_url)
+            lst = parsed.path.split('/')
+            git_folder = '/'.join(lst[:len(lst)-1]) # remove step name from path
+            if git_provider_type == 'GitLab':
+                pass
+            elif git_provider_type == 'GitHub':
+                git_folder = git_folder + '/' + lst[-1].split['-'][0] # add pipeline name
+            url_parts = [parsed.scheme, parsed.netloc, git_folder, '', '', '']
+            pipeline_git_url = urlunparse(url_parts)
+
         if git_provider_type == 'GitLab':
             gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password)
             #products_root_name_id = git_provider.get_gitlab_group_id(git_provider_api, gitlab_session, products_root_name)
@@ -320,6 +342,7 @@ class SinaraPipelineProvider():
 
         do_clone = True
         if pipeline_git_url is None or pipeline_git_url == 'None': # get pipeline git url from first pipeline step
+            pipeline_git_url = None
             do_clone = False
             for step_repo_name in get_step_folders(f'{pipeline_dir}/*'):
                 import subprocess
