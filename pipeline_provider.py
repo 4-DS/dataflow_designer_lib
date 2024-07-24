@@ -56,6 +56,16 @@ class SinaraPipelineProvider():
             if run_result.returncode !=0:
                 raise Exception(f'Could not store Git credentials!')
 
+    def get_pipeline_name(self, pipeline_dir):
+        return Path(pipeline_dir).stem
+
+    def get_step_name(self, step_folder, git_provider_type):
+        if git_provider_type == 'GitLab':
+            step_name = Path(step_folder).name
+        elif git_provider_type == 'GitHub':
+            step_folder_split = Path(step_folder).name.split("-")
+            step_name = '-'.join(step_folder_split[1::]) if len(step_folder_split) > 1 else None
+        return step_name
 
     def create_pipeline(self, pipeline_manifest_path, pipeline_dir, pipeline_name,
                         git_provider, git_default_branch = 'main',
@@ -612,3 +622,42 @@ class SinaraPipelineProvider():
                 #                   shell=True, stderr=STDOUT, cwd=step_folder, executable="/bin/bash")
                 if run_result.returncode !=0 :
                     raise Exception(f'Could not push a repository for SinaraML step with the name {step_repo_name}!')
+
+    def checkout_pipeline(self,
+                          pipeline_dir,
+                          git_provider_type,
+                          git_provider_url,
+                          git_provider_api,
+                          git_branch = 'main',
+                          steps_folder_glob = None,
+                          git_username = None,
+                          git_password = None
+                          ):
+        pipeline_name = self.get_pipeline_name(pipeline_dir)
+
+        if not steps_folder_glob:
+            if git_provider_type == 'GitLab':
+                steps_folder_glob = f"{Path(pipeline_dir).resolve()}/*"
+            elif git_provider_type == 'GitHub':
+                steps_folder_glob = f"{Path(pipeline_dir).resolve()}/{pipeline_name}-*"
+
+        step_folders = get_step_folders(steps_folder_glob)
+            
+        for step_folder in step_folders:
+            step_name = None
+            step_repo_git = None
+            step_name = self.get_step_name(step_folder, git_provider_type)
+            child_env = set_git_creds_for_subprocess(git_username, git_username)
+            run_result = run(
+                f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' checkout -f {git_branch}",
+                universal_newlines=True,
+                shell=True,
+                check=True,
+                capture_output=True,
+                env=child_env,
+                text=True,
+                cwd=step_folder,
+                executable="/bin/bash")
+
+            if run_result.returncode !=0 :
+                raise Exception(f'Could not push a repository for SinaraML step with the name {step_name}!')
