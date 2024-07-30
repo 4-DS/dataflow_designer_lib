@@ -153,7 +153,7 @@ def create_gitlab_group(git_provider_api, gitlab_session, group_name, parent_gro
 
 def create_gitlab_repo(*, git_provider_api, gitlab_session, repo_group_id, repo_name, repo_description, is_private):
 
-    if check_gitlab_project_exists(git_provider_api, gitlab_session, repo_group_id, repo_name):
+    if not check_gitlab_project_exists(git_provider_api, gitlab_session, repo_group_id, repo_name):
         headers = {
     #        'PRIVATE-TOKEN': token,
             'Content-Type': 'application/json',
@@ -189,3 +189,15 @@ def check_gitlab_project_exists(git_provider_api, gitlab_session, group_id, proj
             return True
         
     return False
+
+def get_gitlab_project_url(git_provider_api, gitlab_session, group_id, project_name):
+    response = gitlab_session.get(f'{git_provider_api}/v4/groups/{group_id}/projects')
+    
+    response.raise_for_status()
+
+    projects_list = response.json()
+    for project in projects_list:
+        if project["name"] == project_name:
+            return project["http_url_to_repo"]
+    return None
+    

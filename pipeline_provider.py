@@ -70,6 +70,12 @@ class SinaraPipelineProvider():
             step_name = "-".join(step_folder_split[1::]) if len(step_folder_split) > 1 else None
         return step_name
 
+    def get_step_repo_name(self, step_name, pipeline_name, git_provider_type):
+        if git_provider_type == 'GitLab':
+            return f"{step_name}"
+        elif git_provider_type == 'GitHub':
+            return f"{pipeline_name}-{step_name}"
+
     def get_steps_folder_glob(self, git_provider_type, pipeline_dir, pipeline_name):
         if git_provider_type == "GitLab":
             steps_folder_glob = f"{Path(pipeline_dir).resolve()}/*"
@@ -159,17 +165,10 @@ class SinaraPipelineProvider():
                 pipeline_git_url = step_git_url
                 break
             if pipeline_git_url is None:
-                raise Exception("Could not pull SinaraML pipeline: git repository not found!")
+                raise Exception("Could not push SinaraML pipeline: git repository not found!")
 
-            parsed = urlparse(step_git_url)
-            lst = parsed.path.split("/")
-            git_folder = "/".join(lst[:len(lst)-1]) # remove step name from path
-            if git_provider_type == "GitLab":
-                pass
-            elif git_provider_type == "GitHub":
-                git_folder = git_folder + "/" + lst[-1].split["-"][0] # add pipeline name
-            url_parts = [parsed.scheme, parsed.netloc, git_folder, "", "", ""]
-            pipeline_git_url = urlunparse(url_parts)
+
+        pipeline_name = self.get_pipeline_name(pipeline_dir)
 
         if git_provider_type == "GitLab":
             gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password)
@@ -186,46 +185,51 @@ class SinaraPipelineProvider():
 
         for step_folder in step_folders:
             step_name = None
-            step_repo_git = None
-            if git_provider_type == "GitLab":
-                step_name = Path(step_folder).name
-                pipeline_name = pipeline_git_url.split("/")[-1]
-            elif git_provider_type == "GitHub":
-                step_folder_split = Path(step_folder).name.split("-")
-                step_name = "-".join(step_folder_split[1::]) if len(step_folder_split) > 1 else None
-                pipeline_name = step_folder_split[0]
+            step_name = self.get_step_name(step_folder, git_provider_type)
+            step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
     
             if step_name:
+                step_origin_url = None
+                response = None
                 if git_provider_type == "GitLab":
-                    step_repo_name = f"{step_name}"
-                    step_repo_git = f"{pipeline_git_url}/{step_repo_name}.git"
                     # create GitLab repo for a step
-
                     response = git_provider.create_gitlab_repo(git_provider_api=git_provider_api,
                                                                 gitlab_session=gitlab_session,
                                                                 repo_group_id=pipeline_name_id,
-                                                                repo_name=step_repo_name,
+                                                                repo_name=step_repo,
                                                                 repo_description="This is your " + step_name + " step in pipeline " + pipeline_name,
                                                                 is_private=True)
-              
-                elif git_provider_type == "GitHub":
-                    step_repo_name = f"{pipeline_name}-{step_name}"
-                    step_repo_git = f"{pipeline_git_url}/{step_repo_name}.git"
-                    
+                    step_origin_url = get_gitlab_project_url(git_provider_api=git_provider_api,
+                                                             gitlab_session=gitlab_session,
+                                                             group_id=pipeline_name_id,
+                                                             project_name=step_repo)
+                elif git_provider_type == "GitHub":               
                     git_org_name = urlparse(pipeline_git_url).path.split("/")[1]
-                    
-                    # create GitHub repo for a step
-                    response = git_provider.create_github_repo(git_provider_api=git_provider_api,
-                                                                git_provider_url=git_provider_url,
+                    if not git_provider.check_github_project_exists(git_provider_api=git_provider_api,
+                                                                    org_name=git_org_name,
+                                                                    token=git_password,
+                                                                    repo_name=step_repo):
+                        # create GitHub repo for a step
+                        response = git_provider.create_github_repo(git_provider_api=git_provider_api,
+                                                                   git_provider_url=git_provider_url,
+                                                                   org_name=git_org_name,
+                                                                   token=git_password,
+                                                                   repo_name=step_repo,
+                                                                   repo_description="This is your " + step_name + " step in pipeline " + pipeline_name,
+                                                                   is_private=True)
+                    if not step_origin_url:
+                        step_origin_url = response.json()["clone_url"] if response else \
+                            git_provider.get_github_project_url(git_provider_api=git_provider_api,
                                                                 org_name=git_org_name,
                                                                 token=git_password,
-                                                                repo_name=step_repo_name,
-                                                                repo_description="This is your " + step_name + " step in pipeline " + pipeline_name,
-                                                                is_private=True)
+                                                                repo_name=step_repo)
+                
                 child_env = set_git_creds_for_subprocess(git_username, git_password)
                 run_result = run(f"git checkout {git_default_branch} && \
-                                   git remote set-url origin {step_repo_git} && \
-                                   git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch}",
+                                   git remote set-url origin {step_origin_url} && \
+                                   ([[ $(git ls-remote --exit-code --heads origin refs/heads/{git_default_branch}) ]] && echo 'Pulling new changes' && \
+                                   git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' pull --set-upstream origin {git_default_branch}); \
+                                   (echo 'Pushing new' && git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' push --set-upstream origin {git_default_branch})",
                                    universal_newlines=True,
                                    shell=True,
                                    env=child_env,
@@ -362,8 +366,9 @@ class SinaraPipelineProvider():
             for step_folder in step_folders:
                 step_name = None
                 step_name = self.get_step_name(step_folder, git_provider_type)
+                step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
                 child_env = set_git_creds_for_subprocess(git_username, git_username)
-                step_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {new_origin_url}/{step_name}"
+                step_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {new_origin_url}/{step_repo}"
                 run_result = run(
                     step_cmd,
                     universal_newlines=True,
