@@ -21,8 +21,9 @@ pp = pprint.PrettyPrinter(indent=4)
 
 def set_git_creds_for_subprocess(git_username, git_password):
     child_env = os.environ.copy()
-    child_env["GIT_USER"] = git_username
-    child_env["GIT_PASSWORD"] = git_password
+    if git_username and git_password:
+        child_env["GIT_USER"] = git_username
+        child_env["GIT_PASSWORD"] = git_password
     return child_env
 
 class StepPullException(Exception):
@@ -32,6 +33,9 @@ class StepPushException(Exception):
     pass
 
 class StepCheckoutException(Exception):
+    pass
+
+class StepStatusException(Exception):
     pass
 
 class StepUpdateOriginException(Exception):
@@ -338,8 +342,8 @@ class SinaraPipelineProvider():
         try:
             self.exec_command_for_each_step(pipeline_dir = pipeline_dir,
                               git_provider_type = git_provider_type,
-                              git_provider_url = git_provider_url,
-                              git_provider_api = git_provider_api,
+                              #git_provider_url = git_provider_url,
+                              #git_provider_api = git_provider_api,
                               steps_folder_glob = steps_folder_glob,
                               git_username = git_username,
                               git_password = git_password,
@@ -397,8 +401,8 @@ class SinaraPipelineProvider():
         try:
             self.exec_command_for_each_step(pipeline_dir = pipeline_dir,
                               git_provider_type = git_provider_type,
-                              git_provider_url = git_provider_url,
-                              git_provider_api = agit_provider_api,
+                              #git_provider_url = git_provider_url,
+                              #git_provider_api = agit_provider_api,
                               steps_folder_glob = steps_folder_glob,
                               git_username = git_username,
                               git_password = git_password,
@@ -407,11 +411,26 @@ class SinaraPipelineProvider():
             (ex,) = e.args
             raise StepCheckoutException(f"Could not checkout branch {git_branch} in the repository for SinaraML step {ex['step_name']} at {ex['step_folder']}!")
 
+    def pipeline_status(self, pipeline_dir, git_provider_type):
+        git_status_cmd = f"git status"
+        try:
+            self.exec_command_for_each_step(pipeline_dir = pipeline_dir,
+                              git_provider_type = git_provider_type,
+                              #git_provider_url = git_provider_url,
+                              #git_provider_api = agit_provider_api,
+                              #steps_folder_glob = steps_folder_glob,
+                              #git_username = git_username,
+                              #git_password = git_password,
+                              step_cmd = git_status_cmd)
+        except Exception as e:
+            (ex,) = e.args
+            raise StepStatusException(f"Could not get status in the repository for SinaraML step {ex['step_name']} at {ex['step_folder']}!")
+    
     def exec_command_for_each_step(self,
                           pipeline_dir,
                           git_provider_type,
-                          git_provider_url,
-                          git_provider_api,
+                          #git_provider_url,
+                          #git_provider_api,
                           steps_folder_glob = None,
                           git_username = None,
                           git_password = None,
@@ -420,6 +439,7 @@ class SinaraPipelineProvider():
 
         if not steps_folder_glob:
             steps_folder_glob = self.get_steps_folder_glob(git_provider_type, pipeline_dir, pipeline_name)
+        print(steps_folder_glob)
 
         step_folders = get_step_folders(steps_folder_glob)
             
@@ -427,12 +447,13 @@ class SinaraPipelineProvider():
             step_name = None
             step_name = self.get_step_name(step_folder, git_provider_type)
             child_env = set_git_creds_for_subprocess(git_username, git_username)
+            print(f"\033[1mStep: {step_name}\033[0m")
             run_result = run(
                 step_cmd,
                 universal_newlines=True,
                 shell=True,
                 check=True,
-                capture_output=True,
+                capture_output=False,
                 env=child_env,
                 text=True,
                 cwd=step_folder,
