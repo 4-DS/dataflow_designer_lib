@@ -203,7 +203,7 @@ class SinaraPipelineProvider():
                                                                 repo_name=step_repo,
                                                                 repo_description="This is your " + step_name + " step in pipeline " + pipeline_name,
                                                                 is_private=True)
-                    step_origin_url = get_gitlab_project_url(git_provider_api=git_provider_api,
+                    step_origin_url = git_provider.get_gitlab_project_url(git_provider_api=git_provider_api,
                                                              gitlab_session=gitlab_session,
                                                              group_id=pipeline_name_id,
                                                              project_name=step_repo)
