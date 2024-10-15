@@ -242,7 +242,7 @@ class SinaraPipelineProvider():
                                    executable="/bin/bash")
 
                 if run_result.returncode != 0:
-                    raise Exception(f"Could not push a repository for SinaraML step with the name {step_repo_name}!")
+                    raise Exception(f"Could not push a repository for SinaraML step with the name {step_name}!")
 
     def pull_pipeline(self, pipeline_dir, pipeline_git_url,
                       git_provider_type, git_provider_url, git_provider_api,
