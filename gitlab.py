@@ -93,7 +93,13 @@ def get_gitlab_group_id2(git_provider_api, gitlab_session, groupFullPath):
 
     #print(response.json())
     #exit(0)
-    group_id = response.json()['data']['group']['id']
+    group = response.json()['data']['group']
+    if group is None:
+        print('GitLab API Error: Unable to find repository group!')
+        print('GitLab API answer:')
+        print(response.json())
+        exit(0)
+    group_id = group['id']
     return group_id.split('/')[-1]
 
 def get_gitlab_group_projects(git_provider_api, gitlab_session, groupFullPath):
