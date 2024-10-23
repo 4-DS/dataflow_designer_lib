@@ -168,8 +168,8 @@ def create_gitlab_repo(*, git_provider_api, gitlab_session, repo_group_id, repo_
         data = '{"path": "'+ repo_name + '", "name": "'+ repo_name +'", "namespace_id": '+ str(repo_group_id) +', "description": "' + repo_description + '", "visibility": ' + "private" if is_private else "public" + '}'
     
         data = '{"name": "'+ repo_name +'", "namespace_id": '+ str(repo_group_id) + ' }'
-        response = gitlab_session.post(f'{git_provider_api}/projects/', headers=headers, data=data)
-        
+        response = gitlab_session.post(f'{git_provider_api}/v4/projects/', headers=headers, data=data)
+        response.raise_for_status()
         return response
 
 def get_pipeline_steps(*, git_provider_api, gitlab_session, group_id):
