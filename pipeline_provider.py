@@ -203,6 +203,11 @@ class SinaraPipelineProvider():
                                                                 repo_name=step_repo,
                                                                 repo_description="This is your " + step_name + " step in pipeline " + pipeline_name,
                                                                 is_private=True)
+                    
+                    if not response or response.status != 200:
+                        print(f"Unable to create '{step_name}' step in pipeline '{pipeline_name}'")
+                        print(f"GitLab response: {response}")
+                        exit(0)
                     step_origin_url = git_provider.get_gitlab_project_url(git_provider_api=git_provider_api,
                                                              gitlab_session=gitlab_session,
                                                              group_id=pipeline_name_id,
