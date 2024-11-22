@@ -15,7 +15,7 @@ from urllib.parse import urlparse, urlunparse
 from .step_utils import create_step, get_step_folders
 from dataflow_designer_lib.github import create_github_repo
 
-from dataflow_designer_lib.common import get_tmp_prepared 
+from dataflow_designer_lib.common import get_tmp_prepared, get_sinaralib_url
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -42,6 +42,9 @@ class StepUpdateOriginException(Exception):
     pass
 
 class StepUpdateSinaraLibException(Exception):
+    pass
+
+class StepPipelineTransferException(Exception):
     pass
 
 class SinaraPipelineProvider():
@@ -426,6 +429,55 @@ class SinaraPipelineProvider():
         except Exception as e:
             (ex,) = e.args
             raise StepStatusException(f"Could not get status in the repository for SinaraML step {ex['step_name']} at {ex['step_folder']}!")
+
+    def pipeline_transfer(self,
+                          pipeline_dir,
+                          git_provider_type,
+                          git_provider_url,
+                          git_provider_api,
+                          steps_folder_glob = None,
+                          git_username = None,
+                          git_password = None,a
+                          new_origin_url = None):
+        try:
+            pipeline_name = self.get_pipeline_name(pipeline_dir)
+            if not steps_folder_glob:
+                steps_folder_glob = self.get_steps_folder_glob(git_provider_type, pipeline_dir, pipeline_name)
+            step_folders = get_step_folders(steps_folder_glob)
+
+            new_sinaralib_url = get_sinaralib_url()
+                
+            for step_folder in step_folders:
+                step_name = None
+                step_name = self.get_step_name(step_folder, git_provider_type)
+                step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
+                child_env = set_git_creds_for_subprocess(git_username, git_username)
+                step_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {new_origin_url}/{step_repo}"
+                submodule_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule set-url sinara {new_sinaralib_url} && git submodule sync --recursive"
+                run_result = run(
+                    step_cmd,
+                    universal_newlines=True,
+                    shell=True,
+                    check=True,
+                    capture_output=True,
+                    env=child_env,
+                    text=True,
+                    cwd=step_folder,
+                    executable="/bin/bash")
+                
+                run_result = run(
+                    submodule_cmd,
+                    universal_newlines=True,
+                    shell=True,
+                    check=True,
+                    capture_output=True,
+                    env=child_env,
+                    text=True,
+                    cwd=step_folder,
+                    executable="/bin/bash")
+
+        except Exception as e:
+            raise StepPipelineTransferException(f"Could not transfer repository for SinaraML step {step_name} at {step_folder}!")
     
     def exec_command_for_each_step(self,
                           pipeline_dir,
