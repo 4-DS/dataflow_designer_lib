@@ -174,11 +174,13 @@ class SinaraPipelineProvider():
             if pipeline_git_url is None:
                 raise Exception("Could not push SinaraML pipeline: git repository not found!")
 
-
         pipeline_name = self.get_pipeline_name(pipeline_dir)
 
         if git_provider_type == "GitLab":
             gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password)
+            print('zz')
+            exit(0)
+
             pipeline_group_path = urlparse(pipeline_git_url).path[1::] # remove root slash
             pipeline_name_id = git_provider.get_gitlab_group_id2(git_provider_api, gitlab_session, pipeline_group_path)
             print(pipeline_name_id)
@@ -375,7 +377,7 @@ class SinaraPipelineProvider():
                 step_name = None
                 step_name = self.get_step_name(step_folder, git_provider_type)
                 step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
-                child_env = set_git_creds_for_subprocess(git_username, git_username)
+                child_env = set_git_creds_for_subprocess(git_username, git_password)
                 step_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {new_origin_url}/{step_repo}"
                 run_result = run(
                     step_cmd,
@@ -437,7 +439,7 @@ class SinaraPipelineProvider():
                           git_provider_api,
                           steps_folder_glob = None,
                           git_username = None,
-                          git_password = None,a
+                          git_password = None,
                           new_origin_url = None):
         try:
             pipeline_name = self.get_pipeline_name(pipeline_dir)
@@ -451,9 +453,9 @@ class SinaraPipelineProvider():
                 step_name = None
                 step_name = self.get_step_name(step_folder, git_provider_type)
                 step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
-                child_env = set_git_creds_for_subprocess(git_username, git_username)
+                child_env = set_git_creds_for_subprocess(git_username, git_password)
                 step_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {new_origin_url}/{step_repo}"
-                submodule_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule set-url sinara {new_sinaralib_url} && git submodule sync --recursive"
+                submodule_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule set-url sinara {new_sinaralib_url} && git submodule sync --recursive && cd sinara && git checkout main && git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' pull"
                 run_result = run(
                     step_cmd,
                     universal_newlines=True,
@@ -499,7 +501,7 @@ class SinaraPipelineProvider():
         for step_folder in step_folders:
             step_name = None
             step_name = self.get_step_name(step_folder, git_provider_type)
-            child_env = set_git_creds_for_subprocess(git_username, git_username)
+            child_env = set_git_creds_for_subprocess(git_username, git_password)
             print(f"\033[1mStep: {step_name}\033[0m")
             run_result = run(
                 step_cmd,
