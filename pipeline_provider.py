@@ -26,25 +26,28 @@ def set_git_creds_for_subprocess(git_username, git_password):
         child_env["GIT_PASSWORD"] = git_password
     return child_env
 
-class StepPullException(Exception):
+class PipelineProviderException(Exception):
     pass
     
-class StepPushException(Exception):
+class StepPullException(PipelineProviderException):
+    pass
+    
+class StepPushException(PipelineProviderException):
     pass
 
-class StepCheckoutException(Exception):
+class StepCheckoutException(PipelineProviderException):
     pass
 
-class StepStatusException(Exception):
+class StepStatusException(PipelineProviderException):
     pass
 
-class StepUpdateOriginException(Exception):
+class StepUpdateOriginException(PipelineProviderException):
     pass
 
-class StepUpdateSinaraLibException(Exception):
+class StepUpdateSinaraLibException(PipelineProviderException):
     pass
 
-class StepPipelineTransferException(Exception):
+class StepPipelineTransferException(PipelineProviderException):
     pass
 
 class SinaraPipelineProvider():
@@ -169,17 +172,26 @@ class SinaraPipelineProvider():
                 import subprocess
                 result = subprocess.run(f"cd {step_repo_name} && git config --get remote.origin.url", shell=True, stdout=subprocess.PIPE)
                 step_git_url = result.stdout.decode("utf-8").replace("\n", "")
-                pipeline_git_url = step_git_url
-                break
+                if not step_git_url is None:
+                    pipeline_git_url = step_git_url
+                    break
             if pipeline_git_url is None:
-                raise Exception("Could not push SinaraML pipeline: git repository not found!")
+                raise StepPushException(f"Could not push SinaraML pipeline: git repository not found!")
+            parsed = urlparse(pipeline_git_url)
+            lst = parsed.path.split("/")
+            git_folder = "/".join(lst[:len(lst)-1]) # remove step name from path
+            if git_provider_type == "GitLab":
+                pass
+            elif git_provider_type == "GitHub":
+                git_folder = git_folder + "/" + lst[-1].split["-"][0] # add pipeline name
+            url_parts = [parsed.scheme, parsed.netloc, git_folder, "", "", ""]
+            pipeline_git_url = urlunparse(url_parts)
 
+        
         pipeline_name = self.get_pipeline_name(pipeline_dir)
 
         if git_provider_type == "GitLab":
             gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password)
-            print('zz')
-            exit(0)
 
             pipeline_group_path = urlparse(pipeline_git_url).path[1::] # remove root slash
             pipeline_name_id = git_provider.get_gitlab_group_id2(git_provider_api, gitlab_session, pipeline_group_path)
@@ -261,11 +273,14 @@ class SinaraPipelineProvider():
             do_clone = False
             for step_repo_name in get_step_folders(f"{pipeline_dir}/*"):
                 import subprocess
+                print(f"checking step {step_repo_name}")
                 result = subprocess.run(f"cd {step_repo_name} && git config --get remote.origin.url", shell=True, stdout=subprocess.PIPE)
                 step_git_url = result.stdout.decode("utf-8").replace("\n", "")
-                break
+                if not step_git_url is None:
+                    pipeline_git_url = step_git_url
+                    break
             if pipeline_git_url is None:
-                raise Exception(f"Could not pull SinaraML pipeline: git repository not found!")
+                raise StepPullException(f"Could not pull SinaraML pipeline: git repository not found!")
 
             parsed = urlparse(step_git_url)
             lst = parsed.path.split("/")
