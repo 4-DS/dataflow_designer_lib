@@ -1,0 +1,12 @@
+/.idea/*
+/venv/*
+/tmp/*
+/tmp/
+tmp
+!/tmp/readme.txt
+/__pycache__/*
+/.ipynb_checkpoints/*
+**/__pycache__/*
+**/.ipynb_checkpoints/*
+/.tsrc/*
+manifest.yml
