@@ -329,7 +329,7 @@ class SinaraPipelineProvider():
             step_repo_git = step["step_repo_git"]
             if do_clone:
                 # clone
-                git_command = f"clone {step_repo_git}"
+                git_command = f"clone --recursive {step_repo_git}"
                 cwd = pipeline_dir
             else: 
                 #pull
