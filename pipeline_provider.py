@@ -470,7 +470,14 @@ class SinaraPipelineProvider():
                 step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
                 child_env = set_git_creds_for_subprocess(git_username, git_password)
                 step_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' remote set-url origin {new_origin_url}/{step_repo}"
-                submodule_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule set-url sinara {new_sinaralib_url} && git submodule sync --recursive && cd sinara && git checkout main && git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' pull"
+                submodule_cmd1 = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' submodule set-url sinara {new_sinaralib_url} && git submodule sync --recursive"
+                submodule_cmd2 = [f"git config pull.rebase false",
+                f"git checkout main",
+                f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' fetch --all",
+                f"git reset --hard origin/main",
+                f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' pull"]
+
+                print(step_folder)
                 run_result = run(
                     step_cmd,
                     universal_newlines=True,
@@ -483,7 +490,7 @@ class SinaraPipelineProvider():
                     executable="/bin/bash")
                 
                 run_result = run(
-                    submodule_cmd,
+                    submodule_cmd1,
                     universal_newlines=True,
                     shell=True,
                     check=True,
@@ -492,6 +499,17 @@ class SinaraPipelineProvider():
                     text=True,
                     cwd=step_folder,
                     executable="/bin/bash")
+                for cmd in submodule_cmd2:
+                    run_result = run(
+                        cmd,
+                        universal_newlines=True,
+                        shell=True,
+                        check=True,
+                        capture_output=True,
+                        env=child_env,
+                        text=True,
+                        cwd=f"{step_folder}/sinara",
+                        executable="/bin/bash")
 
         except Exception as e:
             raise StepPipelineTransferException(f"Could not transfer repository for SinaraML step {step_name} at {step_folder}!")
