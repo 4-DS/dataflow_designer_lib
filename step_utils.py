@@ -101,7 +101,7 @@ def is_step(step_folder):
                     #if 'step_name' in params['step_params']:
                     #    return True
             except Exception as e:
-                raise Exception(f'Error reading {param_file}, skipping')
+                raise Exception(f'Error reading {step_params_file}, skipping')
     return False
 
 def get_step_folders(steps_folder_glob):
