@@ -157,7 +157,7 @@ class SinaraPipelineProvider():
     def push_pipeline(self, pipeline_dir, pipeline_git_url,
                       git_provider_type, git_provider_url, git_provider_api,
                       git_default_branch = "main",
-                      git_username = None, git_password = None, git_auth_method):
+                      git_username = None, git_password = None, git_auth_method = 'std'):
         self.cache_git_creds(git_provider_url, git_username, git_password)
 
         steps_folder_glob = f"{pipeline_dir}/*"
