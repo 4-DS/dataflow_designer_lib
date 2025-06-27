@@ -2,6 +2,7 @@ import requests
 import re
 import os
 import sys
+import urllib.parse
 
 from html.parser import HTMLParser
  
@@ -26,9 +27,11 @@ class Parse(HTMLParser):
                    break
 
 
-def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
-    GIT_PROVIDER_SIGN_IN_URL = f'{git_provider_url}/users/sign_in'
-    GIT_PROVIDER_LOGIN_URL = f'{git_provider_url}/users/sign_in'
+def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password, auth_method = "std"):
+    GIT_PROVIDER_SIGN_IN_URL = urllib.parse.urljoin(git_provider_url, '/users/sign_in')
+    GIT_PROVIDER_LOGIN_URL = urllib.parse.urljoin(git_provider_url, '/users/sign_in')
+    if auth_method == "ldap":
+        GIT_PROVIDER_LOGIN_URL = urllib.parse.urljoin(git_provider_url, '/users/auth/ldapmain/callback')
     
     session = requests.Session()
 
@@ -41,25 +44,42 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
     token = None
     if m:
         token = m.group(1)
-    
+
     if not token:
-        print('Unable to find the authenticity token')
-        sys.exit(1)
+        raise Exception('Unable to find the authenticity token on GitLab login page')
     
+    # print(GIT_PROVIDER_SIGN_IN_URL)
+    # print(f"auth_method: {auth_method}")
+    # print(sign_in_page)
+    # print('*****************************************')
+    # print(token)
+    # exit(0)
+
     data = {'user[login]': gitlab_username,
             'user[password]': gitlab_password,
             'authenticity_token': token}
+    if auth_method == "ldap":
+        data = {'username': gitlab_username,
+            'password': gitlab_password,
+            'authenticity_token': token}
+
     r = session.post(GIT_PROVIDER_LOGIN_URL, data=data)
     if r.status_code != 200:
-        print(f'Failed to log in to GitLab {GIT_PROVIDER_LOGIN_URL}')
-        sys.exit(1)
+        raise Exception(f'Failed to log in to GitLab {GIT_PROVIDER_LOGIN_URL}')
+    # print(r.status_code)
+    # print(r.text)
+    # exit(0)
 
-    page_tokens = session.get('/'.join((git_provider_url, '/-/user_settings/personal_access_tokens')))
+    page_tokens = session.get(urllib.parse.urljoin(git_provider_url, '/-/user_settings/personal_access_tokens'))
     private_token = None
     if page_tokens.ok:
         p = Parse()
         p.feed(page_tokens.text)
         token = p.data
+        # print(page_tokens.text)
+        # print('*****************************************')
+        # print(token)
+        # exit(0)
         
         body = {
             "personal_access_token[name]": 'mytoken',
@@ -67,14 +87,14 @@ def get_gitlab_session(git_provider_url, gitlab_username, gitlab_password):
             'authenticity_token': token
         }
         
-    response = session.post('/'.join((git_provider_url, '/-/user_settings/personal_access_tokens')), data=body)
+    response = session.post(urllib.parse.urljoin(git_provider_url, '/-/user_settings/personal_access_tokens'), data=body)
     print(response.headers['Content-type'])
    
     if response.ok and 'application/json' in response.headers['Content-type']:
         private_token = response.json()['new_token']
         
     if not private_token:
-        sys.exit(1)
+        raise Exception('Unable to get GitLab access token')
     session.headers.update({'Private-Token': private_token})
     return session
 

@@ -157,7 +157,7 @@ class SinaraPipelineProvider():
     def push_pipeline(self, pipeline_dir, pipeline_git_url,
                       git_provider_type, git_provider_url, git_provider_api,
                       git_default_branch = "main",
-                      git_username = None, git_password = None):
+                      git_username = None, git_password = None, git_auth_method):
         self.cache_git_creds(git_provider_url, git_username, git_password)
 
         steps_folder_glob = f"{pipeline_dir}/*"
@@ -191,7 +191,7 @@ class SinaraPipelineProvider():
         pipeline_name = self.get_pipeline_name(pipeline_dir)
 
         if git_provider_type == "GitLab":
-            gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password)
+            gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password, git_auth_method)
 
             pipeline_group_path = urlparse(pipeline_git_url).path[1::] # remove root slash
             pipeline_name_id = git_provider.get_gitlab_group_id2(git_provider_api, gitlab_session, pipeline_group_path)
@@ -265,7 +265,7 @@ class SinaraPipelineProvider():
     def pull_pipeline(self, pipeline_dir, pipeline_git_url,
                       git_provider_type, git_provider_url, git_provider_api,
                       git_default_branch = "main",
-                      git_username = None, git_password = None):
+                      git_username = None, git_password = None, git_auth_method = 'std'):
 
         do_clone = True
         if pipeline_git_url is None or pipeline_git_url == "None": # get pipeline git url from first pipeline step
@@ -298,7 +298,7 @@ class SinaraPipelineProvider():
         gitlab_session = None
         step_list = []
         if git_provider_type == "GitLab":
-            gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password)
+            gitlab_session = git_provider.get_gitlab_session(git_provider_url, git_username, git_password, git_auth_method)
             pipeline_group_path = urlparse(pipeline_git_url).path[1::]
             step_list = git_provider.get_gitlab_group_projects(git_provider_api, gitlab_session, pipeline_group_path)
             pipeline_name = urlparse(pipeline_git_url).path.split("/")[-1]
