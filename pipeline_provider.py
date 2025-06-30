@@ -44,6 +44,9 @@ class StepStatusException(PipelineProviderException):
 class StepUpdateOriginException(PipelineProviderException):
     pass
 
+class StepUpdateNameException(PipelineProviderException):
+    pass
+
 class StepUpdateSinaraLibException(PipelineProviderException):
     pass
 
@@ -407,6 +410,38 @@ class SinaraPipelineProvider():
 
         except Exception as e:
             raise StepUpdateOriginException(f"Could not update origin in the repository for SinaraML step {step_name} at {step_folder}!")
+
+def update_name_for_pipeline(self,
+                          pipeline_dir,
+                          git_provider_type,
+                          steps_folder_glob = None,
+                          new_name = None):
+        try:
+            pipeline_name = self.get_pipeline_name(pipeline_dir)
+            if not steps_folder_glob:
+                steps_folder_glob = self.get_steps_folder_glob(git_provider_type, pipeline_dir, pipeline_name)
+            step_folders = get_step_folders(steps_folder_glob)
+                
+            for step_folder in step_folders:
+                step_name = None
+                step_name = self.get_step_name(step_folder, git_provider_type)
+                step_repo = self.get_step_repo_name(step_name, pipeline_name, git_provider_type)
+                step_params_file = Path(step_folder) / "params" / "step_params.json"
+                with open(step_params_file, "r+") as f:
+                    step_params = json.load(f)
+                    step_params["pipeline_params"]["pipeline_name"] = new_name
+                    f.seek(0)
+                    f.truncate()
+                    json.dump(step_params, f)
+
+            pipeline_parent_dir = Path(pipeline_dir).parent
+            pipeline_new_dir = pipeline_parent_dir / new_name
+            os.rename(pipeline_dir, pipeline_new_dir)
+            os.chdir(pipeline_new_dir)
+            print(f"Pipeline {pipeline_dir} moved to {pipeline_new_dir}\nUse cd {pipeline_new_dir} to enter pipeline folder")
+
+        except Exception as e:
+            raise StepUpdateNameException(f"Could not update pipeline name in the repository for SinaraML step {step_name} at {step_folder}!")
 
     def checkout_pipeline(self,
                           pipeline_dir,
