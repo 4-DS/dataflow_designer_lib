@@ -411,7 +411,7 @@ class SinaraPipelineProvider():
         except Exception as e:
             raise StepUpdateOriginException(f"Could not update origin in the repository for SinaraML step {step_name} at {step_folder}!")
 
-def update_name_for_pipeline(self,
+    def update_name_for_pipeline(self,
                           pipeline_dir,
                           git_provider_type,
                           steps_folder_glob = None,
@@ -443,16 +443,7 @@ def update_name_for_pipeline(self,
         except Exception as e:
             raise StepUpdateNameException(f"Could not update pipeline name in the repository for SinaraML step {step_name} at {step_folder}!")
 
-    def checkout_pipeline(self,
-                          pipeline_dir,
-                          git_provider_type,
-                          git_provider_url,
-                          git_provider_api,
-                          git_branch = 'main',
-                          steps_folder_glob = None,
-                          git_username = None,
-                          git_password = None
-                          ):
+    def checkout_pipeline(self, pipeline_dir, git_provider_type, git_provider_url, git_provider_api, git_branch = 'main', steps_folder_glob = None, git_username = None, git_password = None):
         step_checkout_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' checkout -f {git_branch}"
         try:
             self.exec_command_for_each_step(pipeline_dir = pipeline_dir,
