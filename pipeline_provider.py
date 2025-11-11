@@ -8,7 +8,7 @@ import importlib
 import pprint
 
 from pathlib import Path
-from subprocess import STDOUT, run, call
+from subprocess import STDOUT, run, call, CalledProcessError
 from getpass import getpass
 from urllib.parse import urlparse, urlunparse
 
@@ -443,17 +443,54 @@ class SinaraPipelineProvider():
         except Exception as e:
             raise StepUpdateNameException(f"Could not update pipeline name in the repository for SinaraML step {step_name} at {step_folder}!")
 
-    def checkout_pipeline(self, pipeline_dir, git_provider_type, git_provider_url, git_provider_api, git_branch = 'main', steps_folder_glob = None, git_username = None, git_password = None):
-        step_checkout_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' checkout -f {git_branch}"
+    def branch_exists(self, branch_name, step_folder):
+        """Checks branch existance in the local repo"""
         try:
-            self.exec_command_for_each_step(pipeline_dir = pipeline_dir,
-                              git_provider_type = git_provider_type,
-                              #git_provider_url = git_provider_url,
-                              #git_provider_api = agit_provider_api,
-                              steps_folder_glob = steps_folder_glob,
-                              git_username = git_username,
-                              git_password = git_password,
-                              step_cmd = step_checkout_cmd)
+            result = run(
+                ['git', 'branch', '--list', branch_name],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd = step_folder
+            )
+            return branch_name in result.stdout
+        except CalledProcessError as e:
+            raise(e)
+            #return False
+        
+    def checkout_pipeline(self, pipeline_dir, git_provider_type, git_provider_url, git_provider_api, git_branch = 'main', steps_folder_glob = None, git_username = None, git_password = None):
+        try:
+            pipeline_name = self.get_pipeline_name(pipeline_dir)
+    
+            if not steps_folder_glob:
+                steps_folder_glob = self.get_steps_folder_glob(git_provider_type, pipeline_dir, pipeline_name)
+    
+            step_folders = get_step_folders(steps_folder_glob)
+                
+            for step_folder in step_folders:
+
+                # print(self.branch_exists(git_branch, step_folder=step_folder))
+                # exit(0)
+                flag = 'f' if self.branch_exists(git_branch, step_folder=step_folder) else 'b'
+                step_checkout_cmd = f"git -c credential.helper=\'!f() {{ sleep 1; echo \"username=${{GIT_USER}}\"; echo \"password=${{GIT_PASSWORD}}\"; }}; f\' checkout -{flag} {git_branch}"
+                
+                step_name = None
+                step_name = self.get_step_name(step_folder, git_provider_type)
+                child_env = set_git_creds_for_subprocess(git_username, git_password)
+                print(f"\033[1mStep: {step_name}\033[0m")
+                run_result = run(
+                    step_checkout_cmd,
+                    universal_newlines=True,
+                    shell=True,
+                    check=True,
+                    capture_output=False,
+                    env=child_env,
+                    text=True,
+                    cwd=step_folder,
+                    executable="/bin/bash")
+    
+                if run_result.returncode != 0:
+                    raise Exception({"step_name": step_name, "step_folder": step_folder})
         except Exception as e:
             (ex,) = e.args
             raise StepCheckoutException(f"Could not checkout branch {git_branch} in the repository for SinaraML step {ex['step_name']} at {ex['step_folder']}!")
